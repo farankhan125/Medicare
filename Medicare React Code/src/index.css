@@ -1,0 +1,109 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  display: inline-block;
+  line-height: 1;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, #022448 0%, #2d486d 60%, #510004 100%);
+}
+
+.feature-suite-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.675rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(2, 36, 72, 0.1);
+  border: 1px solid rgba(2, 36, 72, 0.15);
+  color: #022448;
+  font-family: Inter, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, sans-serif;
+}
+
+button {
+  transition: all 200ms ease;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+
+.glass-effect {
+  backdrop-filter: blur(20px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.ui-scrollbar,
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #e6e8ea transparent;
+}
+
+.ui-scrollbar::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 9px;
+}
+
+.ui-scrollbar::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+}
+
+.ui-scrollbar::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  background: #e6e8ea;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 8px rgba(2, 36, 72, 0.16);
+  transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.ui-scrollbar::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background: #e6e8ea;
+  box-shadow: 0 4px 12px rgba(2, 36, 72, 0.22);
+}
+
