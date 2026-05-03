@@ -1,0 +1,293 @@
+profiles table schema
+
+create table public.profiles (
+  id uuid not null,
+  patient_id text not null default (
+    'P-'::text || upper(
+      "substring" ((extensions.uuid_generate_v4 ())::text, 1, 8)
+    )
+  ),
+  full_name text not null,
+  email text not null,
+  date_of_birth date null,
+  gender text null,
+  known_conditions text null,
+  allergies text null,
+  blood_type text null,
+  organ_donor boolean null default false,
+  weight_kg numeric(5, 2) null,
+  height_cm numeric(5, 2) null,
+  emergency_contact_name text null,
+  emergency_contact_number text null,
+  emergency_contact_relation text null,
+  profile_completed boolean null default false,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  email_alerts boolean null default true,
+  ai_assistant boolean not null default false,
+  timezone text not null default 'Asia/Karachi'::text,
+  constraint profiles_pkey primary key (id),
+  constraint profiles_patient_id_key unique (patient_id),
+  constraint profiles_id_fkey foreign KEY (id) references auth.users (id) on delete CASCADE,
+  constraint profiles_blood_type_check check (
+    (
+      blood_type = any (
+        array[
+          'A+'::text,
+          'A-'::text,
+          'B+'::text,
+          'B-'::text,
+          'O+'::text,
+          'O-'::text,
+          'AB+'::text,
+          'AB-'::text,
+          'Unknown'::text
+        ]
+      )
+    )
+  ),
+  constraint profiles_gender_check check (
+    (
+      gender = any (
+        array[
+          'Male'::text,
+          'Female'::text,
+          'Other'::text,
+          'Prefer not to say'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create trigger trg_profiles_updated_at BEFORE
+update on profiles for EACH row
+execute FUNCTION update_updated_at ();
+
+medications table schema
+
+create table public.medications (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  user_id uuid not null,
+  name text not null,
+  form text not null,
+  dosage_amount numeric(8, 2) null,
+  dosage_unit text null,
+  frequency text not null,
+  dose_amount_left integer null default 0,
+  start_date date not null,
+  end_date date null,
+  prescribed_by text null,
+  notes text null,
+  is_active boolean null default true,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  stock_unit text null,
+  amount_per_time numeric(8, 2) null,
+  consumption_unit text null,
+  frequency_details jsonb null,
+  constraint medications_pkey primary key (id),
+  constraint medications_user_id_fkey foreign KEY (user_id) references profiles (id) on delete CASCADE,
+  constraint medications_form_check check (
+    (
+      form = any (
+        array[
+          'Tablet'::text,
+          'Capsule'::text,
+          'Softgel'::text,
+          'Caplet'::text,
+          'Lozenge'::text,
+          'Pill'::text,
+          'Chewable tablet'::text,
+          'Powder sachet'::text,
+          'Cream'::text,
+          'Ointment'::text,
+          'Gel'::text,
+          'Paste'::text,
+          'Lotion'::text,
+          'Syrup'::text,
+          'Oral Solution'::text,
+          'Suspension'::text,
+          'Drops'::text,
+          'Elixir'::text,
+          'Solution'::text,
+          'Nasal spray'::text,
+          'Oral spray'::text,
+          'Throat spray'::text,
+          'Ear spray'::text,
+          'Dermal spray'::text,
+          'Injection'::text,
+          'Subcutaneous'::text,
+          'Intramuscular'::text,
+          'Intravenous'::text,
+          'Auto-injector'::text,
+          'Prefilled syringe'::text,
+          'Inhaler'::text,
+          'MDI inhaler'::text,
+          'Dry powder inhaler'::text,
+          'Nebulizer'::text,
+          'Nebulizer Respule'::text,
+          'Rotacap'::text,
+          'Autohaler'::text,
+          'Other'::text
+        ]
+      )
+    )
+  ),
+  constraint medications_consumption_unit_check check (
+    (
+      (consumption_unit is null)
+      or (
+        consumption_unit = any (
+          array[
+            'pieces'::text,
+            'ml'::text,
+            'applications'::text,
+            'drops'::text,
+            'sprays'::text,
+            'injections'::text,
+            'doses'::text,
+            'units'::text,
+            'spoon'::text
+          ]
+        )
+      )
+    )
+  ),
+  constraint medications_stock_unit_check check (
+    (
+      stock_unit = any (
+        array[
+          'pieces'::text,
+          'applications'::text,
+          'drops'::text,
+          'spoon'::text,
+          'ml'::text,
+          'sprays'::text,
+          'injections'::text,
+          'doses'::text,
+          'units'::text
+        ]
+      )
+    )
+  ),
+  constraint medications_frequency_check check (
+    (
+      frequency = any (
+        array[
+          'daily'::text,
+          'weekly'::text,
+          'interval'::text,
+          'monthly'::text,
+          'Once Daily'::text,
+          'Twice Daily'::text,
+          'Three Times Daily'::text,
+          'Every Other Day'::text,
+          'Weekly'::text
+        ]
+      )
+    )
+  ),
+  constraint medications_dosage_unit_check check ((dosage_unit ~ '^[a-zA-Z0-9/%\-\s]+$'::text))
+) TABLESPACE pg_default;
+
+create index IF not exists idx_medications_user_id on public.medications using btree (user_id) TABLESPACE pg_default;
+
+create trigger trg_medications_updated_at BEFORE
+update on medications for EACH row
+execute FUNCTION update_updated_at ();
+
+medication_schedules table schema
+
+create table public.medication_schedules (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  medication_id uuid not null,
+  time_label text null,
+  time_to_take time without time zone not null,
+  created_at timestamp with time zone null default now(),
+  constraint medication_schedules_pkey primary key (id),
+  constraint medication_schedules_medication_id_fkey foreign KEY (medication_id) references medications (id) on delete CASCADE,
+  constraint medication_schedules_time_label_check check (
+    (
+      time_label = any (
+        array[
+          'Morning'::text,
+          'Mid-morning'::text,
+          'Noon'::text,
+          'Afternoon'::text,
+          'Evening'::text,
+          'Night'::text,
+          'Breakfast'::text,
+          'Lunch'::text,
+          'Dinner'::text,
+          'Bedtime'::text,
+          'Other'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_medication_schedules_med_id on public.medication_schedules using btree (medication_id) TABLESPACE pg_default;
+
+dose_logs table schema
+
+create table public.dose_logs (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  user_id uuid not null,
+  scheduled_date date not null,
+  scheduled_time time without time zone not null,
+  status text null default 'Pending'::text,
+  action_token text null default (extensions.uuid_generate_v4 ())::text,
+  reminder_sent_at timestamp with time zone null,
+  followup_sent_at timestamp with time zone null,
+  actioned_at timestamp with time zone null,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  medication_name text null,
+  medication_form text null,
+  dosage_amount numeric null,
+  dosage_unit text null,
+  constraint dose_logs_pkey primary key (id),
+  constraint dose_logs_action_token_key unique (action_token),
+  constraint dose_logs_user_id_fkey foreign KEY (user_id) references profiles (id) on delete CASCADE,
+  constraint dose_logs_status_check check (
+    (
+      status = any (
+        array[
+          'Pending'::text,
+          'Taken'::text,
+          'Skipped'::text,
+          'Missed'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_dose_logs_user_id on public.dose_logs using btree (user_id) TABLESPACE pg_default;
+
+create index IF not exists idx_dose_logs_status on public.dose_logs using btree (status) TABLESPACE pg_default;
+
+create index IF not exists idx_dose_logs_action_token on public.dose_logs using btree (action_token) TABLESPACE pg_default;
+
+create trigger trg_dose_logs_updated_at BEFORE
+update on dose_logs for EACH row
+execute FUNCTION update_updated_at ();
+
+ai_chat_history table schema
+
+create table public.ai_chat_history (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  user_id uuid not null,
+  role text not null,
+  message text not null,
+  created_at timestamp with time zone null default now(),
+  constraint ai_chat_history_pkey primary key (id),
+  constraint ai_chat_history_user_id_fkey foreign KEY (user_id) references profiles (id) on delete CASCADE,
+  constraint ai_chat_history_role_check check (
+    (
+      role = any (array['user'::text, 'assistant'::text])
+    )
+  )
+) TABLESPACE pg_default;
