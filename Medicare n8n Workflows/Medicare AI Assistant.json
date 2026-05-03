@@ -1,0 +1,215 @@
+{
+  "name": "Medicare AI Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-assistant",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bbf7a9f1-bcf1-496d-89d7-b60566d39a8a",
+      "name": "Webhook",
+      "webhookId": "a17b6195-f9c3-412b-9b29-e4aede2096e9"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are Medicare healthcare assistant. Your role is to provide general, safe, and non-prescriptive information to the user.\n\nSTRICT RULES:\n\n* Do NOT diagnose, prescribe, or recommend treatments or medications.\n* Do NOT suggest starting, stopping, or changing any medicine.\n* Only provide general insights, possible interactions, or safety considerations.\n* Always be cautious and avoid harmful or definitive medical advice.\n* If a query is risky or medical-critical, suggest consulting a healthcare professional.\n\nCONTEXT:\nUser Profile:\nName: {{ $('Webhook').item.json.body.profile.full_name }}\nAge: {{ $json.age }}\nGender: {{ $('Webhook').item.json.body.profile.gender }}\nConditions: {{ $('Webhook').item.json.body.profile.known_conditions }}\nAllergies: {{ $('Webhook').item.json.body.profile.allergies }}\nBlood Type: {{ $('Webhook').item.json.body.profile.blood_type }}\nOrgan Donor: {{ $('Webhook').item.json.body.profile.organ_donor }}\nWeight: {{ $('Webhook').item.json.body.profile.weight_kg }} kg\nHeight: {{ $('Webhook').item.json.body.profile.height_cm }} cm\n\nCurrent Medications:\n{{ $('Merge Medicines Together').item.json.medicines_list }}\n\nUSER MESSAGE:\n{{ $('Webhook').item.json.body.message }}\n\nRESPONSE RULES:\n\n* Keep the answer SHORT (maximum 2–3 lines).\n* Be clear, simple, and helpful.\n* If the user asks about a medicine, you may mention:\n  • general purpose\n  • common side effects\n  • possible interactions with their current medications or conditions\n* Do NOT recommend what the user should do.\n* Avoid technical jargon unless necessary.\n\nTONE:\n\n* Calm, neutral, and helpful\n* Not alarming, not overly casual\n\nOUTPUT:\nReturn only the final answer. No disclaimers unless necessary.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        704,
+        0
+      ],
+      "id": "85431f4c-d39b-4c1b-a68a-1be01c6dcd53",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        192
+      ],
+      "id": "0ad73b68-0471-40db-9582-4e055c2123f5",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "sRSWhugKc7gg7N3V",
+          "name": "Google Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.patient_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        256
+      ],
+      "id": "f6eea47b-3a2b-4a86-889e-1dbc5eae1820",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const meds = $input.first().json.body.medications;\n\nconst formatted = meds.map((med, index) => {\n  const dosage = med.dosage_amount && med.dosage_unit\n    ? ` ${med.dosage_amount}${med.dosage_unit}`\n    : \"\";\n\n  return `Medicine ${index + 1}: ${med.name}${dosage} (${med.form}) ${med.frequency}, ${med.amount_per_time} ${med.consumption_unit}`;\n});\n\nreturn [\n  {\n    json: {\n      medicines_list: formatted.join(\" | \")\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "7b37c5ea-78cd-4ee1-9cf4-7c090584aefb",
+      "name": "Merge Medicines Together"
+    },
+    {
+      "parameters": {
+        "jsCode": "const dob = $('Webhook').first().json.body.profile.date_of_birth;\n\nfunction calculateAge(dobString) {\n  const today = new Date();\n  const birthDate = new Date(dobString);\n\n  let age = today.getFullYear() - birthDate.getFullYear();\n\n  const monthDiff = today.getMonth() - birthDate.getMonth();\n\n  if (\n    monthDiff < 0 || \n    (monthDiff === 0 && today.getDate() < birthDate.getDate())\n  ) {\n    age--;\n  }\n\n  return age;\n}\n\nreturn [\n  {\n    json: {\n      age: calculateAge(dob)\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        0
+      ],
+      "id": "255730cd-3dbd-4c78-b8d3-56ade5cc1502",
+      "name": "Calculate Age"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json.output;\n\nreturn [\n  {\n    json: {\n      answer: aiResponse\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        0
+      ],
+      "id": "34a35df2-aafe-43e4-8f25-f330cb356086",
+      "name": "Formatted Response"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1296,
+        0
+      ],
+      "id": "3ebb53fe-ee7a-4a54-a988-ebd56c83f076",
+      "name": "Respond To AI Assistant"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Merge Medicines Together",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Medicines Together": {
+      "main": [
+        [
+          {
+            "node": "Calculate Age",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Age": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Formatted Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatted Response": {
+      "main": [
+        [
+          {
+            "node": "Respond To AI Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f5da910b-4b17-4b26-94e3-c7b885d63150",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8944df7b39999488f425be43bb19378cc24446a009514ed038b3783ef1f4361d"
+  },
+  "id": "LdmRSvbIjVCeVCuz",
+  "tags": []
+}
